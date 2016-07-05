@@ -1,0 +1,688 @@
+Financial Contribution to Presidential Campaigns in California
+========================================================
+
+Heshuang Zeng
+07/01/2016
+
+
+------
+
+# Summary
+
+This report analyzes the presidential financial support pattern in California using open dataset. We found that the Democratic candidates enjoy wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their combined support is less than either Bernard or Hillary. 
+
+Further examining the support pattern by candidate inside democratic party we found Bernard is more popular in the Northern California and low-income class. Hillary are more welcome in the upper class and high-income neighborhoods. Candidate support within a party differs on supporters' income level, zipcode, occupation. 
+
+Support pattern in California are highly related to income level, residential location, as well as occupation.
+
+------
+
+# The Data Structure
+
+The dataset records the presidential contribution from individuals in California in presiential election. It's a tabulor dataset contains 548166 observations of 18 variables dated from Jan 1, 2014 to Apirl 30, 2016. Each observation is a transaction that a contributor made to support a candidate. Therefore, each transition contains three parts of information: 
+- The contributor, including its name, zipcode, city, employer, occupation, and state; 
+- The candidate, including candidate's name, committee ID and candidate ID; 
+- Transition details, including receipt date, receipt amount, receipt description, memo code, memo, from_type, transition ID, amount, file number and election type. 
+Exploring this rich dataset helps us understand the political landscape in California presidential election.
+
+------
+
+# Main interests of Exploratory Research
+
+- ***Univariate***. It is interesting to grasp an understanding on the individual variables, for example, count of cand_name helps us understand the popularity of candidates in California, and the distribution of supports in zipcode, occupation, city and amounts of donations would be useful as well. 
+- ***Bivariate and Multivariate***. It is also possible to uncover support pattern, for example, relationship between type of supporters and candidates by location or by occupation.
+
+
+```{r echo=FALSE, include=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment=FALSE)
+
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(scales)
+library(rgdal)
+library(ggmap)
+```
+
+```{r echo=FALSE, Load_the_Data}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE)
+ca<-read.csv('P00000001-CA.csv', header=FALSE, sep=",")
+#add the name of columns of the dataset. Note, I set the last column as unknown for further operation
+names(ca)<-c("cmte_id","cand_id", "cand_name", "contrb_nm", "contrb_city", "contrb_st", "contrb_zip", "contrb_employer", "contrb_occupation", "contb_receipt_amt", "contb_receipt_DT", "receipt_desc", "memo_cd", "memo_text", "from_tp", "file_num", "tran_id", "election_tp", "unknown")
+#remove the unknown column
+ca$unknown<-NULL
+#remove the first row, which is the inaccurate header
+x=nrow(ca)
+ca<-ca[2:x,]
+str(ca)
+```
+
+
+------
+
+# Univariate Analysis
+
+### Key variables
+- The key variables are transaction amount``contb_receipt_amt``, candidate names``cand_name``, contributors' location by city ``contr_city`` or zipcode ``contr_zip`` and occupation ``contr_occupation``.
+- Other features such as the party of candidates ``party``, date of the donation ``contb_receipt_DT` and the category of contribution ``contrb_category`` by amount might also be helpful.
+
+### Tidy and Clean the Data
+
+Three changes are made to tidy and clean the data
+
+- Changed the format of ``contb_receipt_DT`` from factor to date. 
+- Change the format of ``contb_receipt_amt`` from factor to character then to numeric. I notice there are some negative values, so in the analysis we 
+d better only use the positive value. 
+- Extract the first five digits to make them consistent using stringr, since the zip code data is also inconsistent, some are nine digits and some are five. 
+
+### Create New Variables
+
+Two new variables are created.
+
+- I create a new variable called 'party' to help understand which party gain more popularity in California.
+- I also create a variable called 'contribution_category' which includes five levels: negative, 0-50, 51-200, 201-1000, and 1000+.
+
+
+------
+
+# Univariate Plots Section
+
+### Clean and Create New Variables
+
+####Creating new variable 'party'
+Since using loop function to calculate the new field is too slow, so I subset the dataset into three, then add party variable to each of them and rbind them. 
+
+```{r echo=FALSE, New_variable}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+democratic_names<-c('Clinton, Hillary Rodham', 'Lessig, Lawrence', 'Sanders, Bernard', 'Webb, James Henry Jr.')
+other_names<-c('Johnson, Gary','Stein, Jill')
+no_republican_names<-c(other_names, democratic_names)
+democratic<-subset(ca, cand_name %in% democratic_names)
+democratic$party<-'Democratic'
+other<-subset(ca,cand_name %in% other_names)
+other$party<-'Other'
+republican<-subset(ca,!(cand_name %in% no_republican_names))
+republican$party<-'Republican'
+ca_new<-rbind(democratic, republican, other)
+ca_new$party<-factor(ca_new$party, levels=c('Other', 'Republican', 'Democratic'))
+#supporters by party
+create_bar_plot<-
+  function(variable, dataset){
+    return(ggplot(aes(x=variable), data=dataset)+
+             coord_flip())}
+create_bar_plot(ca_new$party, ca_new)+
+  geom_bar(width = 0.5, fill=c('salmon2','red3', 'dodgerblue4'))+
+  ggtitle('Number of Supporters by Party')+
+  guides(fill=FALSE)+xlab('Party')
+```
+
+#### Tidy the variable of contribution amount
+Step 1.Turning it from factor to numeric
+```{r echo=FALSE, Univariate_Plot_donation_amount}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ca_new$receipt_amount<-as.numeric(as.character(ca_new$contb_receipt_amt))
+summary(ca_new$receipt_amount)
+ca_new<-subset(ca_new, receipt_amount!='NA')
+```
+
+Step 2. Plot the contribution amount by distribution
+```{r echo=FALSE, Univariate_Plot_donation_amount_histogram}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ggplot(aes(x=receipt_amount), data=ca_new)+
+  geom_histogram(binwidth = 10)+
+  ggtitle('The Distribution of Contribution Amount')+
+  scale_x_continuous(limits = c(0,500))
+```
+
+#### Create a new variable called 'contrb_category'
+This variable categorizes the contribution amount to five categories: ``negative, 0-50, 51-200, 201-1000, more_than_1000``. We plot the number of contribution by category and find most contributions are under 50USD.
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ca_new$contrb_category<-cut(ca_new$receipt_amount,
+                            breaks=c(-100001 ,0, 50, 200, 1000, 11000))
+ca_new$contrb_category<-revalue(ca_new$contrb_category, 
+                                c("(-1e+05,0]"="negative","(0,50]"="0-50","(50,200]"="51-200",
+                                  "(200,1e+03]"="201-1000","(1e+03,1.1e+04]"='1000+'))
+create_bar_plot(subset(ca_new, receipt_amount>0)$contrb_category, 
+                subset(ca_new, receipt_amount>0))+
+  geom_bar(width = 0.5)
+  ggtitle("Count by Contribution Amount Backet")
+```
+
+#### Clean the contrb_zip variable 
+Update the zipcode by only including the first five digits and find the top 10 neighborhoods by count.
+```{r echo=FALSE, Zipcode}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ca_new$contrb_zip<-substring(ca_new$contrb_zip,1,5)
+sort(table(ca_new$contrb_zip), decreasing=TRUE)[1:10]
+```
+
+### Ditribution of Key Variables
+#### Candidates and Contribution Count
+The top 10 candidates by popularity (Number of Supports)
+```{r echo=FALSE, Univariate_Plots_Candidate_Names}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+#to see who gain most support in California
+sort(table(ca_new$cand_name), decreasing=TRUE)[1:10]
+```
+#### Contribution Count by City
+Top 10 Cities by Number of Supports
+```{r echo=FALSE, City_by_Number_of_Transaction}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+sort(table(ca_new$contrb_city), decreasing = TRUE)[1:20]
+```
+#### Contribution Count by Occupation
+Top 10 Occupations by Number of Supports
+```{r echo=FALSE, Occupation_by_Number_of_Transaction}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+sort(table(ca_new$contrb_occupation), decreasing=TRUE)[1:10]
+```
+#### Contribution Count Overtime
+Here we examine the supports made after 2015
+```{r echo=FALSE, Number_of_Transaction_over_time}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ca_new$receipt_date<-as.Date(ca_new$contb_receipt_DT, format='%d-%b-%y')
+ggplot(aes(receipt_date), data=ca_new)+
+  geom_histogram(binwidth=10)+
+  ggtitle('Contribution Over Time')+
+  scale_x_date(limits = as.Date(c('2015-01-01', '2016-04-30')))+
+  xlab('Time')+ylab('Count')+
+  theme(legend.position="none")
+```
+
+```{r echo=FALSE, Univariate_Plot_summary_date}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+summary(ca_new$receipt_date)
+```
+
+#### Number of Supports(Count) by Employer
+The top ten employers that give the most number of supports. As it is quite unclear and contains too many categories. I did not carry this over in further analysis.
+
+```{r echo=FALSE, Employer}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+sort(table(ca_new$contrb_employer), decreasing=TRUE)[1:10]
+```
+
+------
+
+
+# Bivariate Plots Section
+
+### Total Contribution by Candidate
+
+Who are the 10 most popular candidates? How much contribution do they received?
+I created a new table on the candidate's donation received called ``receipt_by_candidate``
+I plot the propotion of support count and the propotion of total contribution by candidate. We found Hillary is the candidate that received the most fund, while Sanders is the candidate gain the largest number of individual support.
+Note, I color the barchat by color, these two charts actually are multivarite plots. But I place it here to make the report better follow.
+
+```{r echo=FALSE, Bivariate_Plots_Top_Candidate_by_Donation}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+total<-sum(ca_new$receipt_amount)
+total_number<-dim(ca_new)[1]
+
+detach("package:plyr", unload=TRUE) 
+receipt_by_candidate<-
+  subset(ca_new, receipt_amount>0)%>%
+  group_by(cand_name, party)%>%
+  summarise(total_fund=sum(receipt_amount), 
+            percentage_fund=sum(receipt_amount)/total, 
+            mean_donation=mean(receipt_amount), 
+            median_donation=median(receipt_amount), n=n(), 
+            percentage_number=n()/total_number)
+
+top_candidates_by_number_of_supports<-as.character(
+  arrange(data.frame(receipt_by_candidate),desc(n))[1:10,]$cand_name)
+
+p1<-ggplot(aes(x=reorder(cand_name, total_fund), y=percentage_fund, fill=party),
+           data=arrange(data.frame(receipt_by_candidate),desc(total_fund))[1:10,])+
+  geom_bar(stat='identity')+
+  scale_fill_manual(values=c('red3', 'dodgerblue4'))+
+  xlab('Candidate Names')+ylab('Total Fund Received by Percentage of Total')+
+  labs(title='Top 10 Candidates by Total Fund Received')+
+  coord_flip()+theme(legend.position='none')
+
+p2<-ggplot(aes(x=reorder(cand_name,n), y=percentage_number, fill=party),
+           data=arrange(data.frame(receipt_by_candidate),desc(n))[1:10,])+
+  geom_bar(stat='identity')+
+  scale_fill_manual(values=c('red3', 'dodgerblue4'))+
+  xlab('Candidate Names')+ylab('Total number of Transactions by Percetage of Total')+
+  labs(title='Top 10 Candidates by Number of Supports')+
+  coord_flip()+theme(legend.position='bottom')
+
+plot(p1)
+plot(p2)
+```
+
+### Total contribution and contribution distribution by party
+
+We plot the count of support and the distribution of contribution amount by party.  
+The average donoation to the democratic party is far less than that made to republican party.
+```{r echo=FALSE, Bivariate_Plot_Candidate_and_Mean_Donation}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+b1<-ggplot(aes(x=party,y=receipt_amount, fill=party), data=ca_new)+
+  geom_bar(stat='summary', fun.y=sum, width=0.5)+
+  scale_fill_manual(values=c('salmon2','red3', 'dodgerblue4'))+
+  coord_flip()+
+  ggtitle('Total Contribution by Party')+xlab('Total Contribution')+
+  theme(legend.position='bottom')
+b2<-ggplot(aes(factor(party), receipt_amount, fill=party), 
+           data=subset(ca_new,receipt_amount>0))+
+  scale_fill_manual(values=c('salmon2','red3', 'dodgerblue4'))+
+  geom_boxplot(lwd=0.2, width=0.6, outlier.size = 0.3)+
+  ylim(0,200)+coord_flip()+
+  ggtitle('Contribution Distribution by Party')+
+  xlab('Average Contribution')+ylab('Party')+
+  theme(legend.position='bottom')
+plot(b1)
+plot(b2)
+
+```
+
+### Total contribution and contribution distribution by candidate
+
+When you plot the donation distribution by candidates, you get the similar finding, the democratic candidates receive many contributions but the amount are relatively small. 
+
+```{r echo=FALSE, Bivariate_Plot_Candidate_and_Mean_Donation2}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+#Top candidates' donation distribution
+ggplot(aes(x=cand_name, y=receipt_amount, fill=party), 
+       data=subset(ca_new,cand_name%in%top_candidates_by_number_of_supports))+
+  geom_boxplot(lwd=0.2, outlier.size = 0.3)+
+  scale_fill_manual(values=c('red3', 'dodgerblue4'))+
+  xlab('Candidate Names')+ylab('Contribution ')+
+  labs(title='The Contribution Distribution of Top 10 Candidates by Support Counts')+
+  coord_flip()+ylim(0,600)+
+  theme(legend.position='bottom')
+```
+
+### Top contributions by city
+
+- Top ten cities by total contribution
+We first select the top 10 cities where the number of transactions are over 100
+Then we plot the total contribution by city of the top 10
+
+```{r echo=FALSE, Bivariate_Plots_Top_Cities_by_Total_Donation}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+donation_by_city<-subset(ca_new, receipt_amount>0)%>%
+  group_by(contrb_city)%>%
+  summarise(total_fund=sum(receipt_amount), 
+            percentage_fund=sum(receipt_amount)/total, 
+            mean_donation=mean(receipt_amount), 
+            median_donation=median(receipt_amount), 
+            n=n(), 
+            percentage_number=n()/total_number)
+
+Top_cities_by_number=c(as.character(
+  arrange(donation_by_city, desc(total_fund))[1:10,]$contrb_city))
+Top_cities_by_mean_donation=c(as.character(
+  arrange(subset(donation_by_city, n>100), desc(mean_donation))[1:10,]$contrb_city))
+Bottom_cities_by_mean_donation=c(as.character(
+  arrange(subset(donation_by_city, n>100), mean_donation)[1:10,]$contrb_city))
+```
+
+- LA and San Francisco are top cities that contribute the most donation
+
+```{r echo=FALSE, Bivariate_Plot_Top_Cities_Average_Donation}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ggplot(aes(x=reorder(contrb_city,total_fund), y=total_fund),
+       data=arrange(donation_by_city,desc(total_fund))[1:10,])+
+  geom_bar(stat='identity')+
+  xlab('City')+ylab('Total Contribution')+
+  labs(title='Top 10 City by Total Contribution')+
+  coord_flip()
+```
+
+- The Top 10 Cities by Average Contribution
+
+In response to question of "Where do the rich donors live?". We look into the cities having highest average contribution and also with over 100 transactions. We found there is limited overlap between top cities with total contributions and rich cities with high average contribution. Rich communities did not dominate CA presidential contribution.
+
+
+```{r echo=FALSE, Bivariate_Plot_Rich_Donor_by_City}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ggplot(aes(x=reorder(contrb_city,mean_donation), y=mean_donation), data=arrange(subset(donation_by_city,n>200),desc(mean_donation))[1:10,])+
+  geom_bar(stat='identity')+
+  xlab('City')+ylab('Mean Donation by Transaction')+
+  labs(title='Top 10 City by Average Donation')+
+  coord_flip()
+                                                                      
+```
+
+### Total contribution by occupation
+
+- The retired and unemployed contribute the most in persidential campaign, the homemaker is also a very important political force, since its average donation is even higher than attorny, only smaller than CEO and persident.
+
+```{r echo=FALSE, Bivariate_Plot_Occupation}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+donation_by_occupation<-
+  subset(ca_new, receipt_amount>0)%>%
+  group_by(contrb_occupation)%>%
+  summarise(total_fund=sum(receipt_amount), 
+            percentage_fund=sum(receipt_amount)/total, 
+            mean_donation=mean(receipt_amount), 
+            median_donation=median(receipt_amount), 
+            n=n(), percentage_number=n()/total_number)%>%
+  arrange(desc(n))
+
+top_occupations<-c(as.character(
+  donation_by_occupation[1:10,]$contrb_occupation))
+
+ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amount), data=subset(ca_new, receipt_amount>0&contrb_occupation %in% top_occupations))+
+  geom_bar(stat='summary', fun.y=sum)+
+  ggtitle('Total Contribution by Top Occupation')+
+  coord_flip()+
+  xlab('Total Contribution')+ylab('Occupations')+
+  theme(legend.position='bottom')
+```
+
+- Homemarkers, attorney and IT workers top by mean Contribution
+
+```{r echo=FALSE, Bivariate_Plot_Occupation_Average_Contribution}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=mean), y=receipt_amount), data=subset(ca_new, contrb_occupation %in% top_occupations))+
+  geom_boxplot(lwd=0.2, outlier.size = 0.5)+
+  ggtitle('Mean Contribution by Top Occupations')+
+  coord_flip()+
+  ylab('Contribution')+xlab('Occupations')+
+  ylim(0,500)
+
+```
+
+### Total Contribution by Zipcode
+
+The top ten neighborhood by total contribution
+
+```{r echo=FALSE, Bivariate_Plots_ZipCode}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+donation_by_zip<-
+  subset(ca_new, receipt_amount>0)%>%
+  group_by(contrb_zip)%>%
+  summarise(total_fund=sum(receipt_amount), 
+            percentage_fund=sum(receipt_amount)/total, 
+            mean_donation=mean(receipt_amount), 
+            median_donation=median(receipt_amount), n=n(),
+            percentage_number=n()/total_number)%>%
+  arrange(desc(total_fund))
+Top_zip<-donation_by_zip[1:10,]$contrb_zip
+```
+
+```{r echo=FALSE, Bivariate_Plot_Zipcode_total_funds}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ggplot(aes(x=reorder(contrb_zip,receipt_amount, FUN=sum), y=receipt_amount), 
+       data=subset(ca_new, contrb_zip %in% Top_zip))+
+  geom_bar(stat='summary', fun.y=sum)+
+  ylab('Zipcode')+xlab('Total Contribution')+
+  labs(title='Top 10 Zipcode by Total Donation')+coord_flip()
+```
+
+### Contribution Counts and Total Overtime by Party
+
+- The democratic dominates in terms of support counts, especially in 2016. 
+- In terms of total amount, in 2015, the contribution is similar between two parties, but after 2016, domocratic has significant edge. This might be caused by unexpected raised popularity of Donald Trump and the dropoffs of other republican candidates.
+
+Note, the plot on contribution overtime is a multivariate plot, but I placed it here for the ease of comparison.
+
+```{r echo=FALSE, Bivariate_Plot_Employer_total_funds }
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+c1<-ggplot(aes(x=receipt_date, fill=party), data=ca_new)+
+  geom_histogram(binwidth = 7)+
+  ggtitle('Number of Contributions Over Time by party')+
+  scale_fill_manual(values=c('salmon2','red3', 'dodgerblue4'))+
+  scale_x_date(limits = as.Date(c('2015-01-01', '2016-04-30')))+
+  xlab('Time')+ylab('Count')+
+  theme(legend.position='none')
+
+ca_new$week<-as.Date(cut(ca_new$receipt_date,breaks = "week"))
+
+c2<-ggplot(aes(x=week, y=receipt_amount, color=party), data=ca_new)+
+  geom_line(stat='summary', fun.y=sum)+
+  scale_color_manual(values=c('salmon2','red3', 'dodgerblue4'))+
+  ggtitle('The Amount of Contribution Over Time by Party')+
+  scale_x_date(limits = as.Date(c('2015-01-01', '2016-04-30')))+
+  xlab('Time')+ylab('Contributions')+
+  theme(legend.position='bottom')
+
+plot(c1)
+plot(c2)
+```
+
+
+------
+
+# Bivariate Analysis
+
+### 1. Significant popularity of Democratic Candidates
+Democratic supportors dominate California, no matter in terms of support count and total contribution. However, the number of supports and the total fund received by candidates is not necessarily positively related in California.
+
+####Bernard and Hillary
+More than half of support counts are for Sanders, but Clinton raise the most contributions, twice the Sanders. Mean donation by individual varies by candidate a lot.
+
+### 2. Key supportive forces by occupation.
+Supportors by occupation is interesting. The retired comprises the largest supportive force. The not-employed has the second largest, which is unexpected. Homemaker also have very strong power in political landscape in California as they contribute the forth largest amount of money to candidates with very high average.It would be interesting to see who they support
+
+### 3. Number of Contributions over time by party 
+Democratic candidates receive incresed number of contributions overtime, while support to republican candidate seems to decrease after 2016. This might due to the drop off of many republican candidates and unexpect raise of Trump.
+
+
+------
+
+# Multivariate Plots Section
+
+
+### Total Contribution by Candiates and Contribution Category
+
+As Domocratic party has significant popularity in California and Hillary and Bernard are two most popular candidate, it might be interesting to create a new variable called cand_name2 include Hillary, Bernard and other republican candidates. 
+
+```{r echo=FALSE, Multivariate_Plots1}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+Hillary<-subset(ca_new, cand_name=='Clinton, Hillary Rodham')
+Bernard<-subset(ca_new, cand_name=="Sanders, Bernard")
+republican_new<-subset(ca_new, party=='Republican')
+Hillary$cand_name2<-'Hillary'
+Bernard$cand_name2<-'Bernard'
+republican_new$cand_name2<-'Republic_Candidates'
+ca_new<-rbind(Hillary, Bernard, republican_new)
+```
+
+As shown in the following plot,  Bernard received support mostly from small contributions.While Hillary seem to be popular accross different group. She also received lots of contributions which are over 1000USD.
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+candidate_support_pattern<-
+  ggplot(aes(x=reorder(cand_name2, receipt_amount, FUN=sum), y=receipt_amount, fill=contrb_category), 
+         data=subset(ca_new, receipt_amount>0))+
+  geom_bar(stat='summary', fun.y=sum, width=0.5)+
+  scale_fill_brewer(type='seq')+
+  ggtitle('Total Contribution by Candidate/Party Colored by Contribution Amount Category')+
+  ylab('Total Contribution')+xlab('Candidate/Party Names')+
+  coord_flip()+
+  scale_fill_manual(name=" ", 
+                    labels=c('0-50', '51-200', '201-1000','1000+'), 
+                    values=c("#eff3ff", '#bdd7e7', '#6baed6','#2171b5'))+
+  theme(legend.position='bottom')
+plot(candidate_support_pattern)
+```
+
+### Support Pattern by Occupation
+
+Retired and homemaker more likely to support republic candidates. They are also more likely to support Hillary than Bernard. Not-employed only support democratic candidates, and most of them support Bernard.
+
+```{r echo=FALSE, MultiVariate_Analysis_occupation_candidate_total_fund}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+support_pattern_by_occupation<-
+  ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amount, fill=cand_name2), 
+         data=subset(ca_new, receipt_amount>0&contrb_occupation %in% top_occupations))+
+  geom_bar(stat='summary', fun.y=sum)+
+  ggtitle('Donation by Top Occupation')+
+  coord_flip()+
+  ylab('Total Contribution')+xlab('Occupations')+
+  scale_fill_manual(name="Name\ of\ Candidates", 
+                    labels=c('Bernard', 'Hillary', 'Republican\ Candidates'), 
+                    values=c('#9ecae1', '#3182bd','red3'))+
+  theme(legend.position='bottom')
+
+plot(support_pattern_by_occupation)
+```
+
+### Support pattern in top and bottom cities in terms of contribution avereage
+
+Both high and low communities have diverse political voices. However, high-income communities are more likely to support republican candidates or Hillary. Sanders has larger support in the poor community.
+
+```{r echo=FALSE, MultiVariate_Analysis_support_pattern_by_community}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+r1<-ggplot(aes(x=reorder(contrb_city, receipt_amount, FUN=sum), 
+               y=receipt_amount, fill=cand_name2),
+           data=subset(ca_new, contrb_city %in% Top_cities_by_mean_donation))+
+  geom_bar(stat='summary', fun.y=sum)+
+  coord_flip()+ylab('City')+xlab('Total Contribution')+
+  ggtitle('The Support pattern of the Top 10 Cities by Mean Contribution')+
+  scale_fill_manual(name="Name\ of\ Candidates", 
+                    labels=c('Bernard', 'Hillary', 'Republican\ Candidates'), 
+                    values=c('#9ecae1', '#3182bd','red3'))+
+  theme(legend.position='bottom')
+r2<-ggplot(aes(x=reorder(contrb_city, receipt_amount, FUN=sum), 
+               y=receipt_amount, fill=cand_name2),
+           data=subset(ca_new, contrb_city %in% Bottom_cities_by_mean_donation))+
+  geom_bar(stat='summary', fun.y=sum)+
+  coord_flip()+ylab('City')+xlab('Total Contribution')+
+  scale_fill_manual(name="Name\ of\ Candidates", 
+                    labels=c('Bernard', 'Hillary', 'Republican\ Candidates'), 
+                    values=c('#9ecae1', '#3182bd','red3'))+
+  ggtitle('The Support Pattern of the Bottom 10 Cities by Mean Contribution')+
+  theme(legend.position='bottom')
+plot(r1)
+plot(r2)
+```
+
+
+###Geospatial Analysis
+
+Even though we analyzed the support pattern in rich and poor cities, it is still quite abstrate to understand the full picture. This part explores the spatial pattern in candidate support, we create a new dataset Bernard_index that maps the support rate of Bernard, Hillary and Republican Candidates as well as the total contribution in each zipcode area. I linked this table with the geoinformation table of California. Two maps are created
+ 
+ - **Bernard_index map** shows support rate of Bernard (# of Bernard contributions/total of contributions) in each zipcod, the reder the area, the higher the support rate of Bernard
+ 
+ - **Bernard index and contribution size** plots a poit of each zipcode where the size indicates the total contributions and the color indicates the Bernard support rate.
+ 
+From these two maps we can see, the support to Bernard is overwhelming in California, especially in North California and the Bay area. 
+ 
+ 
+Create a new table call ``zip_summary`` which includes a ``Bernard_index``
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+library('tidyr')
+support_count_by_zip_cand<-subset(ca_new, receipt_amount>0)%>%
+  group_by(contrb_zip, cand_name2)%>%
+  summarise(n=n())%>%
+  ungroup()
+contribution_by_zip_sum<-
+  subset(ca_new, receipt_amount>0)%>%
+  group_by(contrb_zip)%>%
+  summarise(total_contribution=sum(receipt_amount))
+support_count_by_zip<-spread(support_count_by_zip_cand, cand_name2, n, fill=0)
+zip_summary<-merge(support_count_by_zip,contribution_by_zip_sum)
+zip_summary$n<-zip_summary$Hillary+zip_summary$Bernard+zip_summary$Republic_Candidates
+zip_summary$Bernard_index<-zip_summary$Bernard/zip_summary$n
+
+```
+
+Plot the Bernard Index by point
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+library(zipcode)
+data("zipcode")
+ca_zip<-subset(zipcode, state=='CA')
+zip_summary<-merge(zipcode, zip_summary, by.x='zip', by.y='contrb_zip')
+zip_summary<-zip_summary[zip_summary$zip %in% zipcode[zipcode$state=="CA",]$zip,]
+Bernard_index_size_location = ggplot(data=zip_summary) + 
+  geom_jitter(aes(x=longitude, y=latitude, 
+                  colour=Bernard_index, size=total_contribution), alpha=0.4)+
+  scale_color_continuous(low='red1', high='dodgerblue4')+
+  ggtitle('Bernard Index and Size of Total Contribution by Location')
+plot(Bernard_index_size_location)
+
+```
+
+Plot the Bernard Index by polygon
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+ca_shape<-readOGR(dsn='cb_2014_us_zcta510_500k', layer='cb_2014_us_zcta510_500k')
+ca_shape <- ca_shape[ca_shape$GEOID10 %in% zipcode[zipcode$state=="CA",]$zip,]
+ca_shape$zip<-ca_shape$GEOID10
+ca_shape.df<-fortify(ca_shape)
+ca_shape$id<-rownames(ca_shape@data)
+ca_shape.df<-merge(ca_shape.df, ca_shape@data, by='id')
+ca_shape.df<-merge(ca_shape.df,zip_summary, by='zip')
+Bernard_index_plot_by_zipcode<-
+ggplot(data=subset(ca_shape.df, n>0), aes(long, lat, group=group, fill=Bernard_index))+
+  geom_polygon(na.rm = TRUE)+
+  coord_equal()+
+  scale_fill_gradient(low = "red3", high = "dodgerblue4")+
+  ggtitle('Bernard Index by Zipcode')
+plot(Bernard_index_plot_by_zipcode)
+```
+------
+
+# Multivariate Analysis
+
+### Candidates' Popularity varies by geography and occupation
+
+Mulivariate Analysis confirm again that candidates seems to have different popularity in different income groups. 
+
+- The affluent are more likely to support the Republican Candiates, and when they support Domocratic Candidate, they are more likely to support Hillary. This is reflected in support parttern by geography.
+- Retired, Homemakers and Attorneys are more likely to support Republican Candidates or Hillary, while unemployed are more likely to support Bernard.
+
+### Classification Model
+
+it is also possible to contruct a classification model (using logistic regression, ramdon forest, gradient boosting, svm, or netro nework) to predict the candidate based on the amount of contribution, the zipcode, and their occupation. I did not try any model here, but would be interested in exploring these options later.
+
+------
+
+# Key Plots and Summary
+
+### 1. Candidates by Popularity
+Democratic Candidates has significant popularity in California, while Bernard received most support in transaction count, Hillary receive the most supporty in terms of total Contribution.
+
+```{r echo=FALSE, Plot_One}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+plot(p2)
+```
+
+### 2. Support pattern by Candidate
+The affluent are more likely to support the Republican Candiates, and when they support Domocratic Candidate, they are more likely to support Hillary. Bernard gain supports mostly from small contributions. The support pattern by cities with different levels of average contribution support this finding as well.
+```{r echo=FALSE, Plot_Two}
+plot(candidate_support_pattern)
+```
+
+### 3.Support Pattern by Region
+
+Most of contributions are concetrated in the metropolitan area in California, especially the Bay Area and the LA Metropolis. Although the support to Bernard is overwhelming accross California, his popularity is more significant in Northern California than the Mid and the Southern.
+
+```{r echo=FALSE}
+plot(Bernard_index_size_location)
+```
+
+------
+
+# Reflection
+
+###Summary
+
+This analysis screens the support pattern in California. We found Democratic candidates has wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their combined support is still less than either Bernard and Hillary. 
+
+Further examining the support pattern by candidate in democratic party we found Bernard is more popular in the Northern California and low-income class. Hillary are more welcome in the upper class and high-income neighborhoods. Candidate support within a party differs on supporters' income level, zipcode, occupation.
+
+### Struggle
+In my exploratory analysis, my biggest struggle is on two things
+
+- **How to subset the data** The geo variables like zipcode and cities have so many levels, and readers actually can process limited number of them in a plot, so I struggle about whether to choose 5 or 10 or 20 of them to showcase the relation. In the end, I chose 20. 
+- **How to recategorize data** In my analysis, I found party is a category of coarse granularity and candidate is a category of over fine granularity. In the end, I create a category that seperate Hillary from Bernard, and make them at the same level of republican candidates. Also this seems to be illogical, but I found the category help tells lots of story. I also feel the contribution amoun category is very helpful and connect the whole story together, as it clearly mark out the difference in terms of supporters between Hillary and Bernard.
+
+
+### Future Works
+As California is known to be a democratic state for a long time. It would be interesting to compare the pattern presidential contribution to national average.
+On the other hand, it is also possible to contruct a classification model to predict the candidate based on the amount of contribution, the zipcode, and their occupation. 
