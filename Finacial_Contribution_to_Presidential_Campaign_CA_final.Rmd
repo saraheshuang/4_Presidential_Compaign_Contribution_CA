@@ -9,11 +9,11 @@ Heshuang Zeng
 
 # Summary
 
-This report analyzes the presidential financial support pattern in California using open dataset. We found that the Democratic candidates enjoy wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their combined support is less than either Bernard or Hillary. 
+This report analyzes the presidential financial support pattern in California using open dataset. We found that the Democratic candidates enjoy wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their collective support received is less than either Bernard or Hillary. 
 
-Further examining the support pattern by candidate inside democratic party we found Bernard is more popular in the Northern California and low-income class. Hillary are more welcome in the upper class and high-income neighborhoods. Candidate support within a party differs on supporters' income level, zipcode, occupation. 
+Further examining the support pattern by candidate inside democratic party we found Bernard wins more then half of total support counts and he is more popular in the Northern California and low-income class. Hillary is the second popular candidate by support count. However, she is more welcome in the upper class and high-income neighborhoods, since most of big contributions (more than 1000USD) are for her. Candidate support within a party also differs by supporters' income level, zipcode, occupation. 
 
-Support pattern in California are highly related to income level, residential location, as well as occupation.
+The analysis indicates the support pattern in California are highly related to income level, residential location, as well as occupation.
 
 ------
 
@@ -29,8 +29,8 @@ Exploring this rich dataset helps us understand the political landscape in Calif
 
 # Main interests of Exploratory Research
 
-- ***Univariate***. It is interesting to grasp an understanding on the individual variables, for example, count of cand_name helps us understand the popularity of candidates in California, and the distribution of supports in zipcode, occupation, city and amounts of donations would be useful as well. 
-- ***Bivariate and Multivariate***. It is also possible to uncover support pattern, for example, relationship between type of supporters and candidates by location or by occupation.
+- **Univariate**. It is interesting to grasp an understanding on the individual variables, for example, count of cand_name helps us understand the popularity of candidates in California, and the distribution of supports in zipcode, occupation, city and amounts of donations would be useful as well. 
+- **Bivariate and Multivariate**. It is also possible to uncover support pattern, for example, relationship between type of supporters and candidates by location or by occupation.
 
 
 ```{r echo=FALSE, include=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment=FALSE}
@@ -73,7 +73,7 @@ Three changes are made to tidy and clean the data
 - Changed the format of ``contb_receipt_DT`` from factor to date. 
 - Change the format of ``contb_receipt_amt`` from factor to character then to numeric. I notice there are some negative values, so in the analysis we 
 d better only use the positive value. 
-- Extract the first five digits to make them consistent using stringr, since the zip code data is also inconsistent, some are nine digits and some are five. 
+- Extract the first five digits to make them consistent using stringr. In the original file, the zip code data is inconsistent. Some are nine digits and some are five. 
 
 ### Create New Variables
 
@@ -90,7 +90,7 @@ Two new variables are created.
 ### Clean and Create New Variables
 
 ####Creating new variable 'party'
-Since using loop function to calculate the new field is too slow, so I subset the dataset into three, then add party variable to each of them and rbind them. 
+Since using loop function to calculate the new field is too slow, I subset the dataset into three, then add party variable to each of them and rbind them. 
 
 ```{r echo=FALSE, New_variable}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -209,7 +209,7 @@ sort(table(ca_new$contrb_employer), decreasing=TRUE)[1:10]
 
 # Bivariate Plots Section
 
-### Total Contribution by Candidate
+### Top candidates by total contribution
 
 Who are the 10 most popular candidates? How much contribution do they received?
 I created a new table on the candidate's donation received called ``receipt_by_candidate``
@@ -280,9 +280,9 @@ plot(b2)
 
 ```
 
-### Total contribution and contribution distribution by candidate
+### The contribution distribution of the top ten candidate
 
-When you plot the donation distribution by candidates, you get the similar finding, the democratic candidates receive many contributions but the amount are relatively small. 
+Plotting the contribution distribution by candidates for the top ten, I find the contributions made to democratic candidates are relatively small. Bernard enjoy wide popularity but most of his contributions are less than 50 dollars. 
 
 ```{r echo=FALSE, Bivariate_Plot_Candidate_and_Mean_Donation2}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -297,7 +297,7 @@ ggplot(aes(x=cand_name, y=receipt_amount, fill=party),
   theme(legend.position='bottom')
 ```
 
-### Top 10 Cities by Total Contribution
+### Top 10 cities by total contribution
 
 - Top ten cities by total contribution
 We first select the top 10 cities where the number of transactions are over 100
@@ -334,7 +334,7 @@ ggplot(aes(x=reorder(contrb_city,total_fund), y=total_fund),
   coord_flip()
 ```
 
-- The Top 10 Cities by Average Contribution
+- Top 10 cities by mean contribution
 
 In response to question of "Where do the rich donors live?". We look into the cities having highest average contribution and also with over 100 transactions. We found there is limited overlap between top cities with total contributions and rich cities with high average contribution. Rich communities did not dominate CA presidential contribution.
 
@@ -343,15 +343,15 @@ In response to question of "Where do the rich donors live?". We look into the ci
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 ggplot(aes(x=reorder(contrb_city,mean_donation), y=mean_donation), data=arrange(subset(donation_by_city,n>200),desc(mean_donation))[1:10,])+
   geom_bar(stat='identity')+
-  xlab('City')+ylab('Mean Donation by Transaction')+
+  ylab('City')+xlab('Mean Donation by Transaction')+
   labs(title='Top 10 City by Average Donation')+
   coord_flip()
                                                                       
 ```
 
-### Total contribution by occupation
+### Top 10 occupations by total contribution
 
-- The retired and unemployed contribute the most in persidential campaign, the homemaker is also a very important political force, since its average donation is even higher than attorny, only smaller than CEO and persident.
+- The retired and unemployed contribute the most in persidential campaign, the homemaker is also a very important political force, since its average donation is even more than attorny, only next to the CEOs and persidents.
 
 ```{r echo=FALSE, Bivariate_Plot_Occupation}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -376,7 +376,7 @@ ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amou
   theme(legend.position='bottom')
 ```
 
-- Homemarkers, attorney and IT workers top by mean Contribution
+- Homemarkers, attorney and IT workers top by mean contribution
 
 ```{r echo=FALSE, Bivariate_Plot_Occupation_Average_Contribution}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -456,14 +456,14 @@ plot(c2)
 ### 1. Significant popularity of Democratic Candidates
 Democratic supportors dominate California, no matter in terms of support count and total contribution. However, the number of supports and the total fund received by candidates is not necessarily positively related in California.
 
-####Bernard and Hillary
+- Bernard and Hillary
 More than half of support counts are for Sanders, but Clinton raise the most contributions, twice the Sanders. Mean donation by individual varies by candidate a lot.
 
 ### 2. Key supportive forces by occupation.
-Supportors by occupation is interesting. The retired comprises the largest supportive force. The not-employed has the second largest, which is unexpected. Homemaker also have very strong power in political landscape in California as they contribute the forth largest amount of money to candidates with very high average.It would be interesting to see who they support
+Supportors by occupation is interesting. The retired comprises the largest supportive force. The not-employed is the second largest group in presidential compaign donation, which is quite unexpected. Homemaker also have very strong power in political landscape in California as they contribute the forth largest amount of money to candidates with very high average. It would be interesting to see who they support
 
 ### 3. Number of Contributions over time by party 
-Democratic candidates receive incresed number of contributions overtime, while support to republican candidate seems to decrease after 2016. This might due to the drop off of many republican candidates and unexpect raise of Trump.
+Democratic candidates receive incresed number of contributions overtime, while support to republican candidate has been reduced since 2016. This might due to the drop off of many republican candidates and unexpect raise of Trump.
 
 
 ------
@@ -471,7 +471,7 @@ Democratic candidates receive incresed number of contributions overtime, while s
 # Multivariate Plots Section
 
 
-### Total Contribution by Candiates and Contribution Category
+### Top candidates' contribution composition
 
 As Domocratic party has significant popularity in California and Hillary and Bernard are two most popular candidate, it might be interesting to create a new variable called cand_name2 include Hillary, Bernard and other republican candidates. 
 
@@ -486,7 +486,8 @@ republican_new$cand_name2<-'Republic_Candidates'
 ca_new<-rbind(Hillary, Bernard, republican_new)
 ```
 
-As shown in the following plot,  Bernard received support mostly from small contributions.While Hillary seem to be popular accross different group. She also received lots of contributions which are over 1000USD.
+As shown in the following plot,  Bernard received supports mostly from small contributions.While Hillary seem to be popular accross different groups. She also managed to receive bulk of big contributions, each of which is over 1000USD.
+
 
 ```{r}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -495,7 +496,7 @@ candidate_support_pattern<-
          data=subset(ca_new, receipt_amount>0))+
   geom_bar(stat='summary', fun.y=sum, width=0.5)+
   scale_fill_brewer(type='seq')+
-  ggtitle('Total Contribution by Candidate/Party Colored by Contribution Amount Category')+
+  ggtitle('The Contribution Composition of Bernard, Hillary and Republican Canndidates')+
   ylab('Total Contribution')+xlab('Candidate/Party Names')+
   coord_flip()+
   scale_fill_manual(name=" ", 
@@ -559,11 +560,11 @@ plot(r2)
 
 ###Geospatial Analysis
 
-Even though we analyzed the support pattern in rich and poor cities, it is still quite abstrate to understand the full picture. This part explores the spatial pattern in candidate support, we create a new dataset Bernard_index that maps the support rate of Bernard, Hillary and Republican Candidates as well as the total contribution in each zipcode area. I linked this table with the geoinformation table of California. Two maps are created
+Even though we analyzed the support pattern in rich and poor cities, it is still quite abstrate to understand the full picture state-wise. This part explores the support pattern in candidate support, we create a new dataset Bernard_index that maps the support rate of Bernard, Hillary and Republican Candidates as well as the total contribution in each zipcode area. I linked this table with the geoinformation table of California. Two maps are created
  
- - **Bernard_index map** shows support rate of Bernard (# of Bernard contributions/total of contributions) in each zipcod, the reder the area, the higher the support rate of Bernard
+ - **The Bernard_index map** shows support rate of Bernard (# of Bernard contributions/total of contributions) in each zipcode, the bluer the area, the higher the support rate of Bernard
  
- - **Bernard index and contribution size** plots a poit of each zipcode where the size indicates the total contributions and the color indicates the Bernard support rate.
+ - **The Bernard_index and contribution size map** plots a poit of each zipcode where the size indicates the total contributions and the color indicates the Bernard support rate, the bluer, the higher the support rate.
  
 From these two maps we can see, the support to Bernard is overwhelming in California, especially in North California and the Bay area. 
  
@@ -588,25 +589,7 @@ zip_summary$Bernard_index<-zip_summary$Bernard/zip_summary$n
 
 ```
 
-Plot the Bernard Index by point
-
-```{r}
-knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
-library(zipcode)
-data("zipcode")
-ca_zip<-subset(zipcode, state=='CA')
-zip_summary<-merge(zipcode, zip_summary, by.x='zip', by.y='contrb_zip')
-zip_summary<-zip_summary[zip_summary$zip %in% zipcode[zipcode$state=="CA",]$zip,]
-Bernard_index_size_location = ggplot(data=zip_summary) + 
-  geom_jitter(aes(x=longitude, y=latitude, 
-                  colour=Bernard_index, size=total_contribution), alpha=0.4)+
-  scale_color_continuous(low='red1', high='dodgerblue4')+
-  ggtitle('Bernard Index and Size of Total Contribution by Location')
-plot(Bernard_index_size_location)
-
-```
-
-Plot the Bernard Index by polygon
+Plot the Bernard Index by polygon - The Bernard_index map
 
 ```{r}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
@@ -622,45 +605,67 @@ ggplot(data=subset(ca_shape.df, n>0), aes(long, lat, group=group, fill=Bernard_i
   geom_polygon(na.rm = TRUE)+
   coord_equal()+
   scale_fill_gradient(low = "red3", high = "dodgerblue4")+
-  ggtitle('Bernard Index by Zipcode')
+  ggtitle('The Bernard_index map in California')
 plot(Bernard_index_plot_by_zipcode)
 ```
+
+Plot the Bernard Index by point -The Bernard_index and contribution size map
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+library(zipcode)
+data("zipcode")
+ca_zip<-subset(zipcode, state=='CA')
+zip_summary<-merge(zipcode, zip_summary, by.x='zip', by.y='contrb_zip')
+zip_summary<-zip_summary[zip_summary$zip %in% zipcode[zipcode$state=="CA",]$zip,]
+Bernard_index_size_location = ggplot(data=zip_summary) + 
+  geom_jitter(aes(x=longitude, y=latitude, 
+                  colour=Bernard_index, size=total_contribution), alpha=0.4)+
+  scale_color_continuous(low='red1', high='dodgerblue4')+
+  ggtitle('The Bernard_index and contribution size map in California')
+plot(Bernard_index_size_location)
+
+```
+
 ------
 
 # Multivariate Analysis
 
-### Candidates' Popularity varies by geography and occupation
+### Candidates' popularity varies by geography and occupation
 
 Mulivariate Analysis confirm again that candidates seems to have different popularity in different income groups. 
 
 - The affluent are more likely to support the Republican Candiates, and when they support Domocratic Candidate, they are more likely to support Hillary. This is reflected in support parttern by geography.
 - Retired, Homemakers and Attorneys are more likely to support Republican Candidates or Hillary, while unemployed are more likely to support Bernard.
+- Spatial analysis also shows that Bernard is more popular in the Northern California including the bay area, while southern California people more likely to vote for others
 
 ### Classification Model
 
-it is also possible to contruct a classification model (using logistic regression, ramdon forest, gradient boosting, svm, or netro nework) to predict the candidate based on the amount of contribution, the zipcode, and their occupation. I did not try any model here, but would be interested in exploring these options later.
+it is also possible to contruct a classification model (using logistic regression, ramdon forest, gradient boosting, svm, or neutro nework) to predict the candidate based on the amount of contribution, the zipcode, and their occupation. I did not try any model here, but would be interested in exploring these options later.
 
 ------
 
 # Key Plots and Summary
 
 ### 1. Candidates by Popularity
-Democratic Candidates has significant popularity in California, while Bernard received most support in transaction count, Hillary receive the most supporty in terms of total Contribution.
+Democratic Candidates has significant popularity in California, while Bernard received more than half of support counts in total and Hillary received about 25% support count.
 
 ```{r echo=FALSE, Plot_One}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 plot(p2)
 ```
 
-### 2. Support pattern by Candidate
-The affluent are more likely to support the Republican Candiates, and when they support Domocratic Candidate, they are more likely to support Hillary. Bernard gain supports mostly from small contributions. The support pattern by cities with different levels of average contribution support this finding as well.
+### 2. Top Candidates' total contribution and contribution composition
+
+Hillary is the candidate who received the largest contribution by total. Despite of wide popularity of Bernard, the total contribution of his is only about half of Hillary's, since Bernard received supports mostly from small contributions. Hillary seem to be popular accross different groups. She also managed to receive bulk of big contributions that are over 1000USD each.
+
 ```{r echo=FALSE, Plot_Two}
 plot(candidate_support_pattern)
 ```
 
 ### 3.Support Pattern by Region
 
-Most of contributions are concetrated in the metropolitan area in California, especially the Bay Area and the LA Metropolis. Although the support to Bernard is overwhelming accross California, his popularity is more significant in Northern California than the Mid and the Southern.
+Most of contributions are concetrated in the metropolitan area in California, especially the Bay Area and the LA Metropolis. Although the support to Bernard is overwhelming accross California, his popularity is more significant in Northern California than the Mid and the Southern California.
 
 ```{r echo=FALSE}
 plot(Bernard_index_size_location)
@@ -679,10 +684,10 @@ Further examining the support pattern by candidate in democratic party we found 
 ### Struggle
 In my exploratory analysis, my biggest struggle is on two things
 
-- **How to subset the data** The geo variables like zipcode and cities have so many levels, and readers actually can process limited number of them in a plot, so I struggle about whether to choose 5 or 10 or 20 of them to showcase the relation. In the end, I chose 20. 
-- **How to recategorize data** In my analysis, I found party is a category of coarse granularity and candidate is a category of over fine granularity. In the end, I create a category that seperate Hillary from Bernard, and make them at the same level of republican candidates. Also this seems to be illogical, but I found the category help tells lots of story. I also feel the contribution amoun category is very helpful and connect the whole story together, as it clearly mark out the difference in terms of supporters between Hillary and Bernard.
+- **How to subset the data** The geo variables like zipcode and cities have so many levels, and readers actually can process limited number of them in a plot, so I struggle about whether to choose 5 or 10 or 20 of them to showcase the relation. In the end, I chose 10, it contains information, and not overwhelming. 
+- **How to recategorize data** I first created the variable 'party. But later I found it is a category of coarse granularity while ``cand_name`` is a category of over fine granularity. In the end, I create a category that seperate Hillary from Bernard, and make them at the same level of republican candidates. Also this seems to be illogical, but I found the category help tells lots of story. I also feel the contribution amount category is very helpful and connect the whole story together, as it clearly mark out the difference in terms of supporters between Hillary and Bernard.
 
 
 ### Future Works
-As California is known to be a democratic state for a long time. It would be interesting to compare the pattern presidential contribution to national average.
+As California is known to be a democratic state for a long time. It would be interesting to compare the pattern presidential contribution to national average or other states.
 On the other hand, it is also possible to contruct a classification model to predict the candidate based on the amount of contribution, the zipcode, and their occupation. 
