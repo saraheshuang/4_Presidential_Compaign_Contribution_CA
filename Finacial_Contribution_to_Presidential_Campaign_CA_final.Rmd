@@ -297,11 +297,11 @@ ggplot(aes(x=cand_name, y=receipt_amount, fill=party),
   theme(legend.position='bottom')
 ```
 
-### Top contributions by city
+### Top 10 Cities by Total Contribution
 
 - Top ten cities by total contribution
 We first select the top 10 cities where the number of transactions are over 100
-Then we plot the total contribution by city of the top 10
+Then we plot the top 10 cities by total contribution.
 
 ```{r echo=FALSE, Bivariate_Plots_Top_Cities_by_Total_Donation}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
