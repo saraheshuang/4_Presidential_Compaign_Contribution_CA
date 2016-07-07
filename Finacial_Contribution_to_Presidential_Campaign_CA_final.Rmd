@@ -42,6 +42,8 @@ library(dplyr)
 library(scales)
 library(rgdal)
 library(ggmap)
+library(zipcode)
+data("zipcode")
 ```
 
 ```{r echo=FALSE, Load_the_Data}
@@ -94,7 +96,8 @@ Since using loop function to calculate the new field is too slow, I subset the d
 
 ```{r echo=FALSE, New_variable}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
-democratic_names<-c('Clinton, Hillary Rodham', 'Lessig, Lawrence', 'Sanders, Bernard', 'Webb, James Henry Jr.')
+democratic_names<-c('Clinton, Hillary Rodham', 'Lessig, Lawrence', 
+                    'Sanders, Bernard', 'Webb, James Henry Jr.')
 other_names<-c('Johnson, Gary','Stein, Jill')
 no_republican_names<-c(other_names, democratic_names)
 democratic<-subset(ca, cand_name %in% democratic_names)
@@ -104,7 +107,8 @@ other$party<-'Other'
 republican<-subset(ca,!(cand_name %in% no_republican_names))
 republican$party<-'Republican'
 ca_new<-rbind(democratic, republican, other)
-ca_new$party<-factor(ca_new$party, levels=c('Other', 'Republican', 'Democratic'))
+ca_new$party<-factor(ca_new$party, 
+                     levels=c('Other', 'Republican', 'Democratic'))
 #supporters by party
 create_bar_plot<-
   function(variable, dataset){
@@ -341,7 +345,8 @@ In response to question of "Where do the rich donors live?". We look into the ci
 
 ```{r echo=FALSE, Bivariate_Plot_Rich_Donor_by_City}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
-ggplot(aes(x=reorder(contrb_city,mean_donation), y=mean_donation), data=arrange(subset(donation_by_city,n>200),desc(mean_donation))[1:10,])+
+ggplot(aes(x=reorder(contrb_city,mean_donation), y=mean_donation), 
+       data=arrange(subset(donation_by_city,n>200),desc(mean_donation))[1:10,])+
   geom_bar(stat='identity')+
   ylab('City')+xlab('Mean Donation by Transaction')+
   labs(title='Top 10 City by Average Donation')+
@@ -368,7 +373,8 @@ donation_by_occupation<-
 top_occupations<-c(as.character(
   donation_by_occupation[1:10,]$contrb_occupation))
 
-ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amount), data=subset(ca_new, receipt_amount>0&contrb_occupation %in% top_occupations))+
+ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amount), 
+       data=subset(ca_new, receipt_amount>0&contrb_occupation %in% top_occupations))+
   geom_bar(stat='summary', fun.y=sum)+
   ggtitle('Total Contribution by Top Occupation')+
   coord_flip()+
@@ -380,7 +386,8 @@ ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=sum), y=receipt_amou
 
 ```{r echo=FALSE, Bivariate_Plot_Occupation_Average_Contribution}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
-ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=mean), y=receipt_amount), data=subset(ca_new, contrb_occupation %in% top_occupations))+
+ggplot(aes(x=reorder(contrb_occupation, receipt_amount, FUN=mean), y=receipt_amount), 
+       data=subset(ca_new, contrb_occupation %in% top_occupations))+
   geom_boxplot(lwd=0.2, outlier.size = 0.5)+
   ggtitle('Mean Contribution by Top Occupations')+
   coord_flip()+
@@ -492,7 +499,8 @@ As shown in the following plot,  Bernard received supports mostly from small con
 ```{r}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 candidate_support_pattern<-
-  ggplot(aes(x=reorder(cand_name2, receipt_amount, FUN=sum), y=receipt_amount, fill=contrb_category), 
+  ggplot(aes(x=reorder(cand_name2, receipt_amount, FUN=sum), 
+             y=receipt_amount, fill=contrb_category), 
          data=subset(ca_new, receipt_amount>0))+
   geom_bar(stat='summary', fun.y=sum, width=0.5)+
   scale_fill_brewer(type='seq')+
@@ -584,6 +592,7 @@ contribution_by_zip_sum<-
   summarise(total_contribution=sum(receipt_amount))
 support_count_by_zip<-spread(support_count_by_zip_cand, cand_name2, n, fill=0)
 zip_summary<-merge(support_count_by_zip,contribution_by_zip_sum)
+zip_summary$zip<-zip_summary$contrb_zip
 zip_summary$n<-zip_summary$Hillary+zip_summary$Bernard+zip_summary$Republic_Candidates
 zip_summary$Bernard_index<-zip_summary$Bernard/zip_summary$n
 
@@ -591,15 +600,15 @@ zip_summary$Bernard_index<-zip_summary$Bernard/zip_summary$n
 
 Plot the Bernard Index by polygon - The Bernard_index map
 
-```{r}
+```{r echo=FALSE, include=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment=FALSE}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 ca_shape<-readOGR(dsn='cb_2014_us_zcta510_500k', layer='cb_2014_us_zcta510_500k')
 ca_shape <- ca_shape[ca_shape$GEOID10 %in% zipcode[zipcode$state=="CA",]$zip,]
 ca_shape$zip<-ca_shape$GEOID10
-ca_shape.df<-fortify(ca_shape)
 ca_shape$id<-rownames(ca_shape@data)
+ca_shape.df<-fortify(ca_shape)
 ca_shape.df<-merge(ca_shape.df, ca_shape@data, by='id')
-ca_shape.df<-merge(ca_shape.df,zip_summary, by='zip')
+ca_shape.df<-merge(ca_shape.df, zip_summary, by='zip')
 Bernard_index_plot_by_zipcode<-
 ggplot(data=subset(ca_shape.df, n>0), aes(long, lat, group=group, fill=Bernard_index))+
   geom_polygon(na.rm = TRUE)+
@@ -611,10 +620,8 @@ plot(Bernard_index_plot_by_zipcode)
 
 Plot the Bernard Index by point -The Bernard_index and contribution size map
 
-```{r}
+```{r echo=FALSE, include=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment=FALSE}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
-library(zipcode)
-data("zipcode")
 ca_zip<-subset(zipcode, state=='CA')
 zip_summary<-merge(zipcode, zip_summary, by.x='zip', by.y='contrb_zip')
 zip_summary<-zip_summary[zip_summary$zip %in% zipcode[zipcode$state=="CA",]$zip,]
@@ -622,6 +629,7 @@ Bernard_index_size_location = ggplot(data=zip_summary) +
   geom_jitter(aes(x=longitude, y=latitude, 
                   colour=Bernard_index, size=total_contribution), alpha=0.4)+
   scale_color_continuous(low='red1', high='dodgerblue4')+
+  scale_size(range=c(0,10))
   ggtitle('The Bernard_index and contribution size map in California')
 plot(Bernard_index_size_location)
 
