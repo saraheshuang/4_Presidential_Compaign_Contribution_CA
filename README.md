@@ -7,3 +7,5 @@ This report analyzes the presidential financial support pattern in California us
 Further examining the support pattern by candidate inside democratic party we found Bernard is more popular in the Northern California and low-income class. Hillary are more welcome in the upper class and high-income neighborhoods. Candidate support within a party differs on supporters' income level, zipcode, occupation. 
 
 Support pattern in California are highly related to income level, residential location, as well as occupation.
+
+[Project link](https://rawgit.com/saraheshuang/4_Presidential_Compaign_Contribution_CA/master/Finacial_Contribution_to_Presidential_Campaign_CA_final.html)
