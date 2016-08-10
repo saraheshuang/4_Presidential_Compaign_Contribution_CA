@@ -2,7 +2,7 @@
 
 ``#R``  ``#ggplot`` ``#Exploratory Analysis``  ``Data Visualization``
 
-This report analyzes the presidential financial support pattern in California using open dataset. We found that the Democratic candidates enjoy wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their combined support is less than either Bernard or Hillary. 
+This report analyzes the presidential financial support pattern in California from [Federal Election Committee]( http://www.fec.gov/disclosurep/PDownload.do). We found that the Democratic candidates enjoy wide popularity in California, especailly Bernard and Hillary. While the number of Repubican Candidates is large, their combined support is less than either Bernard or Hillary. 
 
 Further examining the support pattern by candidate inside democratic party we found Bernard is more popular in the Northern California and low-income class. Hillary are more welcome in the upper class and high-income neighborhoods. Candidate support within a party differs on supporters' income level, zipcode, occupation. 
 
