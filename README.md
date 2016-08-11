@@ -1,4 +1,4 @@
-# Project4_Presidential_Compaign_Contribution_CA
+# Explore the Presidential Compaign Contribution in California
 
 ``#R``  ``#ggplot`` ``#Exploratory Analysis``  ``Data Visualization``
 
